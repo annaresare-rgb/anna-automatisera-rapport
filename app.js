@@ -1,36 +1,52 @@
 // --- State ---
 const state = {
+  supabase: null,
   gscConnected: false,
   ga4Connected: false,
   ahrefsKey: localStorage.getItem('ahrefs_key') || '',
   winchPdf: null,
   sistrixPdf: null,
+  currentClient: null,
+  clients: [],
 };
 
-// --- Init ---
-document.addEventListener('DOMContentLoaded', () => {
+// --- Boot ---
+document.addEventListener('DOMContentLoaded', async () => {
+  await initSupabase();
   checkGoogleAuth();
   initAhrefs();
   initPdfUploads();
   initSettings();
+  initClientSelector();
+  initProfileToggle();
+  initHistoryToggle();
   document.getElementById('analyze-btn').addEventListener('click', runAnalysis);
   document.getElementById('copy-btn').addEventListener('click', copyText);
+  document.getElementById('pdf-btn').addEventListener('click', exportPdf);
 });
 
-// --- Settings panel ---
+// --- Supabase ---
+async function initSupabase() {
+  try {
+    const res = await fetch('/api/config');
+    const { supabaseUrl, supabaseKey } = await res.json();
+    state.supabase = supabase.createClient(supabaseUrl, supabaseKey);
+  } catch (e) {
+    console.warn('Supabase ej tillgänglig:', e);
+  }
+}
+
+// --- Settings ---
 function initSettings() {
   document.getElementById('settings-toggle').addEventListener('click', () => {
     document.getElementById('settings-panel').classList.toggle('hidden');
   });
-
   document.getElementById('gsc-connect').addEventListener('click', () => {
     window.location.href = '/api/auth/google?type=gsc';
   });
-
   document.getElementById('ga4-connect').addEventListener('click', () => {
     window.location.href = '/api/auth/google?type=ga4';
   });
-
   document.getElementById('ahrefs-save').addEventListener('click', saveAhrefsKey);
 }
 
@@ -71,7 +87,6 @@ function updateConnectionUI(type, connected) {
     if (action) action.innerHTML = '<span class="tag tag-online">Ansluten</span>';
     if (config) config.classList.remove('hidden');
     document.getElementById(`${type}-connect`).textContent = 'Återanslut';
-
     if (type === 'gsc') loadGscSites();
   }
 }
@@ -79,7 +94,6 @@ function updateConnectionUI(type, connected) {
 async function loadGscSites() {
   const select = document.getElementById('gsc-site');
   select.innerHTML = '<option value="">Hämtar sajter...</option>';
-
   try {
     const res = await fetch('/api/gsc-sites', {
       method: 'POST',
@@ -87,13 +101,13 @@ async function loadGscSites() {
       body: JSON.stringify({ token: localStorage.getItem('gsc_token') }),
     });
     const json = await res.json();
-
-    if (!res.ok) {
-      select.innerHTML = `<option value="">Fel: ${json.error}</option>`;
-      return;
-    }
-
+    if (!res.ok) { select.innerHTML = `<option value="">Fel: ${json.error}</option>`; return; }
     select.innerHTML = json.sites.map(s => `<option value="${s}">${s}</option>`).join('');
+
+    // Pre-select client's saved site
+    if (state.currentClient?.gsc_site) {
+      select.value = state.currentClient.gsc_site;
+    }
   } catch (err) {
     select.innerHTML = '<option value="">Kunde inte hämta sajter</option>';
   }
@@ -115,35 +129,188 @@ function saveAhrefsKey() {
   if (!key) return;
   localStorage.setItem('ahrefs_key', key);
   state.ahrefsKey = key;
-  document.getElementById('ahrefs-status').textContent = 'Ansluten';
-  document.getElementById('ahrefs-status').classList.add('connected');
-  document.getElementById('ahrefs-action').innerHTML = '<span class="tag tag-online">Ansluten</span>';
-  document.getElementById('ahrefs-config').classList.remove('hidden');
+  initAhrefs();
   document.getElementById('settings-panel').classList.add('hidden');
+}
+
+// --- Client selector ---
+async function initClientSelector() {
+  await loadClients();
+
+  document.getElementById('client-select').addEventListener('change', onClientSelect);
+  document.getElementById('new-client-btn').addEventListener('click', () => {
+    document.getElementById('client-select').value = '';
+    document.getElementById('new-client-row').classList.remove('hidden');
+    document.getElementById('client-profile').classList.remove('hidden');
+    clearProfile();
+    state.currentClient = null;
+  });
+  document.getElementById('save-profile-btn').addEventListener('click', saveClientProfile);
+}
+
+async function loadClients() {
+  if (!state.supabase) return;
+  const { data } = await state.supabase.from('clients').select('*').order('name');
+  state.clients = data || [];
+  const select = document.getElementById('client-select');
+  const current = select.value;
+  select.innerHTML = '<option value="">— Välj eller skapa ny —</option>' +
+    state.clients.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+  if (current) select.value = current;
+}
+
+async function onClientSelect() {
+  const name = document.getElementById('client-select').value;
+  document.getElementById('new-client-row').classList.add('hidden');
+
+  if (!name) {
+    document.getElementById('client-profile').classList.add('hidden');
+    state.currentClient = null;
+    return;
+  }
+
+  const client = state.clients.find(c => c.name === name);
+  state.currentClient = client;
+  document.getElementById('client-profile').classList.remove('hidden');
+  fillProfile(client);
+  await loadHistory(name);
+
+  // Pre-fill data source fields
+  if (client.ga4_property_id) document.getElementById('ga4-property').value = client.ga4_property_id;
+  if (client.ahrefs_domain) document.getElementById('ahrefs-domain').value = client.ahrefs_domain;
+  if (client.language) document.getElementById('profile-language').value = client.language;
+  if (state.gscConnected && client.gsc_site) {
+    await loadGscSites();
+  }
+}
+
+function fillProfile(client) {
+  document.getElementById('profile-conversions').value = client.conversions || '';
+  document.getElementById('profile-metrics').value = client.important_metrics || '';
+  document.getElementById('profile-brand').value = client.brand_keywords || '';
+  document.getElementById('profile-notes').value = client.context_notes || '';
+  document.getElementById('profile-language').value = client.language || 'sv';
+}
+
+function clearProfile() {
+  ['profile-conversions', 'profile-metrics', 'profile-brand', 'profile-notes'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+}
+
+async function saveClientProfile() {
+  const name = document.getElementById('client-select').value ||
+               document.getElementById('client-name-input').value.trim();
+  if (!name) { alert('Ange kundnamn.'); return; }
+
+  const profile = {
+    name,
+    language: document.getElementById('profile-language').value,
+    conversions: document.getElementById('profile-conversions').value,
+    important_metrics: document.getElementById('profile-metrics').value,
+    brand_keywords: document.getElementById('profile-brand').value,
+    context_notes: document.getElementById('profile-notes').value,
+    gsc_site: document.getElementById('gsc-site').value || null,
+    ga4_property_id: document.getElementById('ga4-property').value || null,
+    ahrefs_domain: document.getElementById('ahrefs-domain').value || null,
+  };
+
+  const btn = document.getElementById('save-profile-btn');
+  btn.textContent = 'Sparar...';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch('/api/clients', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(profile),
+    });
+    if (!res.ok) throw new Error();
+    state.currentClient = await res.json();
+    await loadClients();
+    document.getElementById('client-select').value = name;
+    document.getElementById('new-client-row').classList.add('hidden');
+    btn.textContent = 'Sparad!';
+    setTimeout(() => { btn.textContent = 'Spara kundprofil'; btn.disabled = false; }, 2000);
+  } catch {
+    btn.textContent = 'Spara kundprofil';
+    btn.disabled = false;
+    alert('Kunde inte spara. Försök igen.');
+  }
+}
+
+// --- Profile toggle ---
+function initProfileToggle() {
+  document.getElementById('profile-toggle').addEventListener('click', () => {
+    document.getElementById('profile-fields').classList.toggle('hidden');
+    document.querySelector('#profile-toggle .toggle-arrow').textContent =
+      document.getElementById('profile-fields').classList.contains('hidden') ? '▸' : '▾';
+  });
+}
+
+// --- History ---
+function initHistoryToggle() {
+  document.getElementById('history-toggle').addEventListener('click', () => {
+    document.getElementById('history-list').classList.toggle('hidden');
+    document.querySelector('#history-toggle .toggle-arrow').textContent =
+      document.getElementById('history-list').classList.contains('hidden') ? '▸' : '▾';
+  });
+}
+
+async function loadHistory(clientName) {
+  if (!clientName) return;
+  try {
+    const res = await fetch(`/api/reports-history?client=${encodeURIComponent(clientName)}`);
+    if (!res.ok) return;
+    const reports = await res.json();
+    const historyCard = document.getElementById('history-card');
+    const historyList = document.getElementById('history-list');
+
+    if (!reports.length) { historyCard.classList.add('hidden'); return; }
+
+    historyCard.classList.remove('hidden');
+    historyList.innerHTML = reports.map(r => `
+      <div class="history-item" data-id="${r.id}">
+        <div class="history-meta">
+          <span class="history-period">${r.period}</span>
+          <span class="history-format">${formatLabel(r.report_format)}</span>
+          <span class="history-sources">${(r.sources_used || []).join(', ')}</span>
+        </div>
+        <button class="btn-history-view" onclick="showHistoricalReport(${JSON.stringify(r.analysis_text).replace(/"/g, '&quot;')})">Visa</button>
+      </div>
+    `).join('');
+  } catch (e) { console.warn('Kunde inte ladda historik:', e); }
+}
+
+function formatLabel(fmt) {
+  return { email: 'E-post', presentation: 'Presentation', summary: 'Sammanfattning' }[fmt] || fmt;
+}
+
+function showHistoricalReport(text) {
+  document.getElementById('analysis-output').textContent = text;
+  document.getElementById('result-card').classList.remove('hidden');
+  document.getElementById('result-card').scrollIntoView({ behavior: 'smooth' });
 }
 
 // --- PDF uploads ---
 function initPdfUploads() {
-  document.getElementById('wincher-pdf').addEventListener('change', (e) => handlePdf(e, 'wincher'));
-  document.getElementById('sistrix-pdf').addEventListener('change', (e) => handlePdf(e, 'sistrix'));
+  document.getElementById('wincher-pdf').addEventListener('change', e => handlePdf(e, 'wincher'));
+  document.getElementById('sistrix-pdf').addEventListener('change', e => handlePdf(e, 'sistrix'));
 }
 
 async function handlePdf(e, source) {
   const file = e.target.files[0];
   if (!file) return;
-
   const info = document.getElementById(`${source}-file-info`);
   info.textContent = `Läser ${file.name}...`;
   info.classList.remove('hidden');
-
   try {
     const text = await extractPdfText(file);
     if (source === 'wincher') state.winchPdf = text;
     else state.sistrixPdf = text;
     info.textContent = file.name;
-  } catch (err) {
+  } catch {
     info.textContent = 'Kunde inte läsa filen.';
-    console.error(err);
   }
 }
 
@@ -159,13 +326,12 @@ async function extractPdfText(file) {
   return pages.join('\n');
 }
 
-// --- Fetch GSC data ---
+// --- Data fetching ---
 async function fetchGscData() {
-  const site = document.getElementById('gsc-site').value.trim();
+  const site = document.getElementById('gsc-site').value;
   const period = document.getElementById('current-period').value;
-  if (!site) return { data: null, error: 'Webbplatsadress saknas' };
+  if (!site) return { data: null, error: 'Välj webbplats' };
   if (!period) return { data: null, error: 'Period saknas' };
-
   try {
     const res = await fetch('/api/gsc', {
       method: 'POST',
@@ -175,18 +341,14 @@ async function fetchGscData() {
     const json = await res.json();
     if (!res.ok) return { data: null, error: json.error || `HTTP ${res.status}` };
     return { data: JSON.stringify(json, null, 2) };
-  } catch (err) {
-    return { data: null, error: err.message };
-  }
+  } catch (err) { return { data: null, error: err.message }; }
 }
 
-// --- Fetch GA4 data ---
 async function fetchGa4Data() {
   const propertyId = document.getElementById('ga4-property').value.trim();
   const period = document.getElementById('current-period').value;
   if (!propertyId) return { data: null, error: 'Property ID saknas' };
   if (!period) return { data: null, error: 'Period saknas' };
-
   try {
     const res = await fetch('/api/ga4', {
       method: 'POST',
@@ -196,16 +358,12 @@ async function fetchGa4Data() {
     const json = await res.json();
     if (!res.ok) return { data: null, error: json.error || `HTTP ${res.status}` };
     return { data: JSON.stringify(json, null, 2) };
-  } catch (err) {
-    return { data: null, error: err.message };
-  }
+  } catch (err) { return { data: null, error: err.message }; }
 }
 
-// --- Fetch Ahrefs data ---
 async function fetchAhrefsData() {
   const domain = document.getElementById('ahrefs-domain').value.trim();
   if (!domain) return { data: null, error: 'Domän saknas' };
-
   try {
     const res = await fetch('/api/ahrefs', {
       method: 'POST',
@@ -215,20 +373,20 @@ async function fetchAhrefsData() {
     const json = await res.json();
     if (!res.ok) return { data: null, error: json.error || `HTTP ${res.status}` };
     return { data: JSON.stringify(json, null, 2) };
-  } catch (err) {
-    return { data: null, error: err.message };
-  }
+  } catch (err) { return { data: null, error: err.message }; }
 }
 
 // --- Main analysis ---
 async function runAnalysis() {
-  const client = document.getElementById('client-name').value.trim();
-  const language = document.getElementById('language').value;
+  const clientName = document.getElementById('client-select').value ||
+                     document.getElementById('client-name-input').value.trim();
   const period = document.getElementById('current-period').value;
   const compareWith = document.getElementById('compare-with').value;
+  const reportFormat = document.querySelector('input[name="report-format"]:checked').value;
+  const language = document.getElementById('profile-language').value;
 
-  if (!client) { alert('Fyll i kundnamn.'); return; }
-  if (!period) { alert('Välj aktuell period.'); return; }
+  if (!clientName) { alert('Välj eller skapa en kund.'); return; }
+  if (!period) { alert('Välj period.'); return; }
 
   const btn = document.getElementById('analyze-btn');
   btn.disabled = true;
@@ -236,24 +394,22 @@ async function runAnalysis() {
   document.getElementById('result-card').classList.add('hidden');
 
   try {
-    // Fetch all data in parallel
     const [gscResult, ga4Result, ahrefsResult] = await Promise.all([
       state.gscConnected ? fetchGscData() : Promise.resolve({ data: null }),
       state.ga4Connected ? fetchGa4Data() : Promise.resolve({ data: null }),
       state.ahrefsKey ? fetchAhrefsData() : Promise.resolve({ data: null }),
     ]);
 
-    // Show fetch status to user
     const statusLines = [];
-    if (state.gscConnected) statusLines.push(gscResult.data ? '✓ Google Search Console' : `✗ Google Search Console: ${gscResult.error}`);
-    if (state.ga4Connected) statusLines.push(ga4Result.data ? '✓ Google Analytics 4' : `✗ Google Analytics 4: ${ga4Result.error}`);
-    if (state.ahrefsKey) statusLines.push(ahrefsResult.data ? '✓ Ahrefs' : `✗ Ahrefs: ${ahrefsResult.error}`);
+    if (state.gscConnected) statusLines.push(gscResult.data ? `✓ Google Search Console` : `✗ Google Search Console: ${gscResult.error}`);
+    if (state.ga4Connected) statusLines.push(ga4Result.data ? `✓ Google Analytics 4` : `✗ Google Analytics 4: ${ga4Result.error}`);
+    if (state.ahrefsKey) statusLines.push(ahrefsResult.data ? `✓ Ahrefs` : `✗ Ahrefs: ${ahrefsResult.error}`);
     if (state.winchPdf) statusLines.push('✓ Wincher (PDF)');
     if (state.sistrixPdf) statusLines.push('✓ Sistrix (PDF)');
 
     if (statusLines.some(l => l.startsWith('✗'))) {
-      const proceed = confirm('En eller flera datakällor kunde inte hämtas:\n\n' + statusLines.join('\n') + '\n\nVill du fortsätta med de källor som fungerade?');
-      if (!proceed) return;
+      const ok = confirm('En eller flera datakällor kunde inte hämtas:\n\n' + statusLines.join('\n') + '\n\nVill du fortsätta med de som fungerade?');
+      if (!ok) return;
     }
 
     const data = {
@@ -264,18 +420,24 @@ async function runAnalysis() {
       sistrix: state.sistrixPdf,
     };
 
-    const hasData = Object.values(data).some(v => v);
-    if (!hasData) {
-      alert('Ingen data kunde hämtas. Kontrollera dina anslutningar och försök igen.');
+    if (!Object.values(data).some(v => v)) {
+      alert('Ingen data tillgänglig. Anslut minst en datakälla.');
       return;
     }
 
     btn.textContent = 'Analyserar...';
 
+    const clientProfile = {
+      conversions: document.getElementById('profile-conversions').value,
+      importantMetrics: document.getElementById('profile-metrics').value,
+      brandKeywords: document.getElementById('profile-brand').value,
+      contextNotes: document.getElementById('profile-notes').value,
+    };
+
     const res = await fetch('/api/analyze', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ client, language, period, compareWith, data }),
+      body: JSON.stringify({ client: clientName, language, period, compareWith, reportFormat, data, clientProfile }),
     });
 
     if (!res.ok) throw new Error('Serverfel');
@@ -284,6 +446,9 @@ async function runAnalysis() {
     document.getElementById('analysis-output').textContent = result.analysis;
     document.getElementById('result-card').classList.remove('hidden');
     document.getElementById('result-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    // Refresh history
+    await loadHistory(clientName);
   } catch (err) {
     alert('Något gick fel. Försök igen.');
     console.error(err);
@@ -293,12 +458,15 @@ async function runAnalysis() {
   }
 }
 
-// --- Copy ---
+// --- Copy & PDF ---
 function copyText() {
-  const text = document.getElementById('analysis-output').textContent;
-  navigator.clipboard.writeText(text).then(() => {
+  navigator.clipboard.writeText(document.getElementById('analysis-output').textContent).then(() => {
     const btn = document.getElementById('copy-btn');
     btn.textContent = 'Kopierad!';
-    setTimeout(() => (btn.textContent = 'Kopiera text'), 2000);
+    setTimeout(() => btn.textContent = 'Kopiera', 2000);
   });
+}
+
+function exportPdf() {
+  window.print();
 }

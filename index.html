@@ -12,13 +12,15 @@
   <div class="app">
     <header>
       <div class="logo">SEO Rapport</div>
-      <button class="btn-settings" id="settings-toggle">Inställningar</button>
+      <div class="header-actions">
+        <button class="btn-ghost" id="batch-btn" title="Kommer snart" disabled>Kör batch</button>
+        <button class="btn-ghost" id="settings-toggle">Inställningar</button>
+      </div>
     </header>
 
     <!-- Inställningar -->
     <section class="card hidden" id="settings-panel">
       <h2>Anslutningar</h2>
-
       <div class="connection-list">
         <div class="connection-item">
           <div class="connection-info">
@@ -27,7 +29,6 @@
           </div>
           <button class="btn-connect" id="gsc-connect">Anslut</button>
         </div>
-
         <div class="connection-item">
           <div class="connection-info">
             <span class="connection-name">Google Analytics 4</span>
@@ -35,14 +36,13 @@
           </div>
           <button class="btn-connect" id="ga4-connect">Anslut</button>
         </div>
-
         <div class="connection-item">
           <div class="connection-info">
             <span class="connection-name">Ahrefs</span>
             <span class="connection-status" id="ahrefs-status">Ej ansluten</span>
           </div>
           <div class="api-key-row">
-            <input type="password" id="ahrefs-key" placeholder="Klistra in din Ahrefs API-nyckel">
+            <input type="password" id="ahrefs-key" placeholder="Klistra in Ahrefs API-nyckel">
             <button class="btn-connect" id="ahrefs-save">Spara</button>
           </div>
         </div>
@@ -50,22 +50,68 @@
     </section>
 
     <main>
-      <!-- Kund & period -->
+      <!-- Kund -->
       <section class="card">
-        <h2>Kund &amp; period</h2>
-        <div class="form-row">
-          <div class="form-group">
-            <label for="client-name">Kundnamn</label>
-            <input type="text" id="client-name" placeholder="Skriv kundens namn">
-          </div>
-          <div class="form-group">
-            <label for="language">Språk</label>
-            <select id="language">
-              <option value="sv">Svenska</option>
-              <option value="en">Engelska</option>
+        <h2>Kund</h2>
+        <div class="client-row">
+          <div class="form-group" style="flex:1">
+            <label for="client-select">Välj kund</label>
+            <select id="client-select">
+              <option value="">— Välj eller skapa ny —</option>
             </select>
           </div>
+          <button class="btn-ghost" id="new-client-btn" style="align-self:flex-end;margin-bottom:2px">+ Ny kund</button>
         </div>
+
+        <div class="hidden" id="new-client-row">
+          <div class="form-group" style="margin-top:0.75rem">
+            <label for="client-name-input">Kundnamn</label>
+            <input type="text" id="client-name-input" placeholder="Skriv kundnamn">
+          </div>
+        </div>
+
+        <!-- Kundprofil -->
+        <div class="profile-section hidden" id="client-profile">
+          <div class="profile-toggle" id="profile-toggle">
+            <span>Kundprofil</span>
+            <span class="toggle-arrow">▾</span>
+          </div>
+          <div class="profile-fields" id="profile-fields">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="profile-conversions">Konverteringar vi mäter</label>
+                <input type="text" id="profile-conversions" placeholder="t.ex. Köp, leads, formulär">
+              </div>
+              <div class="form-group">
+                <label for="profile-metrics">Extra viktiga metrics</label>
+                <input type="text" id="profile-metrics" placeholder="t.ex. Organisk trafik, CTR">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="profile-brand">Brandord</label>
+                <input type="text" id="profile-brand" placeholder="t.ex. nordichair, nordic chair">
+              </div>
+              <div class="form-group">
+                <label for="profile-language">Rapportspråk</label>
+                <select id="profile-language">
+                  <option value="sv">Svenska</option>
+                  <option value="en">Engelska</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="profile-notes">Historik &amp; pågående förändringar</label>
+              <textarea id="profile-notes" placeholder="t.ex. Ny landningssida lanserades i mars. Bytte byråkampanj i april. Konkurrent X har tappat synlighet..."></textarea>
+            </div>
+            <button class="btn-save-profile" id="save-profile-btn">Spara kundprofil</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Period & format -->
+      <section class="card">
+        <h2>Period &amp; format</h2>
         <div class="form-row">
           <div class="form-group">
             <label for="current-period">Aktuell period</label>
@@ -80,72 +126,86 @@
             </select>
           </div>
         </div>
+        <div class="form-group" style="margin-top:1rem">
+          <label>Rapportformat</label>
+          <div class="format-options">
+            <label class="format-option">
+              <input type="radio" name="report-format" value="email" checked>
+              <div class="format-card">
+                <span class="format-name">E-post</span>
+                <span class="format-desc">Löpande text, redo att skicka</span>
+              </div>
+            </label>
+            <label class="format-option">
+              <input type="radio" name="report-format" value="presentation">
+              <div class="format-card">
+                <span class="format-name">Presentation</span>
+                <span class="format-desc">Punktlistor för slides</span>
+              </div>
+            </label>
+            <label class="format-option">
+              <input type="radio" name="report-format" value="summary">
+              <div class="format-card">
+                <span class="format-name">Sammanfattning</span>
+                <span class="format-desc">Max 200 ord, det viktigaste</span>
+              </div>
+            </label>
+          </div>
+        </div>
       </section>
 
       <!-- Datakällor -->
       <section class="card">
         <h2>Datakällor</h2>
 
-        <!-- GSC -->
-        <div class="source-block" id="gsc-block">
+        <div class="source-block">
           <div class="source-row">
             <div class="source-meta">
               <span class="source-name">Google Search Console</span>
               <span class="source-desc">Klick, impressions, rankingar, brand/non-brand</span>
             </div>
-            <div class="source-action" id="gsc-action">
-              <span class="tag tag-offline">Inte ansluten — gå till Inställningar</span>
-            </div>
+            <div class="source-action" id="gsc-action"><span class="tag tag-offline">Inte ansluten</span></div>
           </div>
           <div class="source-config hidden" id="gsc-config">
             <div class="form-group">
               <label for="gsc-site">Webbplats</label>
-              <select id="gsc-site">
-                <option value="">Laddar sajter...</option>
-              </select>
+              <select id="gsc-site"><option value="">Hämtar sajter...</option></select>
             </div>
           </div>
         </div>
 
-        <!-- GA4 -->
-        <div class="source-block" id="ga4-block">
+        <div class="source-block">
           <div class="source-row">
             <div class="source-meta">
               <span class="source-name">Google Analytics 4</span>
               <span class="source-desc">Organisk trafik, konverteringar, AI-trafik</span>
             </div>
-            <div class="source-action" id="ga4-action">
-              <span class="tag tag-offline">Inte ansluten — gå till Inställningar</span>
-            </div>
+            <div class="source-action" id="ga4-action"><span class="tag tag-offline">Inte ansluten</span></div>
           </div>
           <div class="source-config hidden" id="ga4-config">
             <div class="form-group">
-              <label for="ga4-property">Property ID (t.ex. 123456789)</label>
+              <label for="ga4-property">Property ID</label>
               <input type="text" id="ga4-property" placeholder="123456789">
             </div>
           </div>
         </div>
 
-        <!-- Ahrefs -->
-        <div class="source-block" id="ahrefs-block">
+        <div class="source-block">
           <div class="source-row">
             <div class="source-meta">
               <span class="source-name">Ahrefs</span>
               <span class="source-desc">Organiska nyckelord, trafik, domänstyrka</span>
             </div>
-            <div class="source-action" id="ahrefs-action">
-              <span class="tag tag-offline">Inte ansluten — gå till Inställningar</span>
-            </div>
+            <div class="source-action" id="ahrefs-action"><span class="tag tag-offline">Inte ansluten</span></div>
           </div>
           <div class="source-config hidden" id="ahrefs-config">
             <div class="form-group">
-              <label for="ahrefs-domain">Domän (t.ex. dinsite.se)</label>
+              <label for="ahrefs-domain">Domän</label>
               <input type="text" id="ahrefs-domain" placeholder="dinsite.se">
             </div>
           </div>
         </div>
 
-        <!-- Wincher PDF -->
         <div class="source-block">
           <div class="source-row">
             <div class="source-meta">
@@ -158,7 +218,6 @@
           <div class="file-info hidden" id="wincher-file-info"></div>
         </div>
 
-        <!-- Sistrix PDF -->
         <div class="source-block">
           <div class="source-row">
             <div class="source-meta">
@@ -174,10 +233,23 @@
 
       <button class="btn-primary" id="analyze-btn">Analysera data</button>
 
+      <!-- Rapporthistorik -->
+      <section class="card hidden" id="history-card">
+        <div class="history-header" id="history-toggle">
+          <h2>Tidigare rapporter</h2>
+          <span class="toggle-arrow">▾</span>
+        </div>
+        <div id="history-list"></div>
+      </section>
+
+      <!-- Resultat -->
       <section class="card hidden" id="result-card">
         <div class="result-header">
           <h2>Analys &amp; rapport</h2>
-          <button class="btn-copy" id="copy-btn">Kopiera text</button>
+          <div class="result-actions">
+            <button class="btn-copy" id="copy-btn">Kopiera</button>
+            <button class="btn-copy" id="pdf-btn">Ladda ner PDF</button>
+          </div>
         </div>
         <div id="analysis-output"></div>
       </section>
@@ -186,6 +258,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="app.js"></script>
 </body>
 </html>
