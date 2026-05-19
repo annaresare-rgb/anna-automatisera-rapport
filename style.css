@@ -222,6 +222,13 @@ textarea { height: 100px; resize: vertical; line-height: 1.5; }
 }
 .btn-upload:hover { background: #f9fafb; }
 
+.settings-note {
+  margin-top: 1rem;
+  font-size: 0.8rem;
+  color: #9ca3af;
+  line-height: 1.5;
+}
+
 .file-info { margin-top: 0.625rem; font-size: 0.8125rem; color: #6b7280; }
 .file-info::before { content: '✓ '; color: #16a34a; font-weight: 600; }
 

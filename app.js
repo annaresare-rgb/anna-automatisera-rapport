@@ -3,8 +3,9 @@ const state = {
   supabase: null,
   gscConnected: false,
   ga4Connected: false,
-  gmailConnected: false,
   ahrefsKey: localStorage.getItem('ahrefs_key') || '',
+  trelloKey: localStorage.getItem('trello_key') || '',
+  trelloToken: localStorage.getItem('trello_token') || '',
   winchPdf: null,
   sistrixPdf: null,
   csvFiles: [],       // [{ name, content }]
@@ -17,6 +18,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   await initSupabase();
   checkGoogleAuth();
   initAhrefs();
+  initTrello();
   initPdfUploads();
   initSettings();
   initClientSelector();
@@ -70,9 +72,7 @@ function initSettings() {
     window.location.href = '/api/auth/google?type=ga4';
   });
   document.getElementById('ahrefs-save').addEventListener('click', saveAhrefsKey);
-  document.getElementById('gmail-connect').addEventListener('click', () => {
-    window.location.href = '/api/auth/google?type=gmail';
-  });
+  document.getElementById('trello-save').addEventListener('click', saveTrelloCredentials);
 }
 
 // --- Google OAuth ---
@@ -93,20 +93,11 @@ function checkGoogleAuth() {
     state.ga4Connected = true;
     history.replaceState({}, '', '/');
   }
-  if (params.get('gmail') === 'ok' && token) {
-    localStorage.setItem('gmail_token', token);
-    if (refresh) localStorage.setItem('gmail_refresh', refresh);
-    state.gmailConnected = true;
-    history.replaceState({}, '', '/');
-  }
-
   if (localStorage.getItem('gsc_token')) state.gscConnected = true;
   if (localStorage.getItem('ga4_token')) state.ga4Connected = true;
-  if (localStorage.getItem('gmail_token')) state.gmailConnected = true;
 
   updateConnectionUI('gsc', state.gscConnected);
   updateConnectionUI('ga4', state.ga4Connected);
-  updateGmailStatus();
 }
 
 function updateConnectionUI(type, connected) {
@@ -124,18 +115,25 @@ function updateConnectionUI(type, connected) {
   }
 }
 
-function updateGmailStatus() {
-  const el = document.getElementById('gmail-status');
-  const btn = document.getElementById('gmail-connect');
-  if (!el || !btn) return;
-  if (state.gmailConnected) {
-    el.textContent = 'Ansluten';
-    el.style.color = '#16a34a';
-    btn.textContent = 'Återanslut';
-  } else {
-    el.textContent = '';
-    btn.textContent = 'Anslut Gmail';
+function initTrello() {
+  if (state.trelloKey && state.trelloToken) {
+    document.getElementById('trello-key').value = state.trelloKey;
+    document.getElementById('trello-token').value = state.trelloToken;
+    const status = document.getElementById('trello-status');
+    if (status) { status.textContent = 'Ansluten'; status.classList.add('connected'); }
   }
+}
+
+function saveTrelloCredentials() {
+  const key = document.getElementById('trello-key').value.trim();
+  const token = document.getElementById('trello-token').value.trim();
+  if (!key || !token) return;
+  localStorage.setItem('trello_key', key);
+  localStorage.setItem('trello_token', token);
+  state.trelloKey = key;
+  state.trelloToken = token;
+  initTrello();
+  document.getElementById('settings-panel').classList.add('hidden');
 }
 
 // --- Subsection toggles (Historisk data & Integrationer) ---
@@ -334,10 +332,7 @@ function fillProfile(client) {
   document.getElementById('profile-language').value = client.language || 'sv';
   document.getElementById('slack-channel-id').value = client.slack_channel_id || '';
   document.getElementById('slack-bot-token').value = client.slack_bot_token || '';
-  document.getElementById('gmail-query').value = client.gmail_query || '';
   document.getElementById('trello-board-id').value = client.trello_board_id || '';
-  document.getElementById('trello-key').value = client.trello_key || '';
-  document.getElementById('trello-token').value = client.trello_token || '';
   // Load historical CSV data stored in Supabase
   if (client.historical_data) {
     try {
@@ -352,8 +347,7 @@ function fillProfile(client) {
 
 function clearProfile() {
   ['profile-conversions', 'profile-metrics', 'profile-brand', 'profile-notes',
-   'slack-channel-id', 'slack-bot-token', 'gmail-query',
-   'trello-board-id', 'trello-key', 'trello-token'].forEach(id => {
+   'slack-channel-id', 'slack-bot-token', 'trello-board-id'].forEach(id => {
     document.getElementById(id).value = '';
   });
   state.csvFiles = [];
@@ -378,10 +372,7 @@ async function saveClientProfile() {
     historical_data: state.csvFiles.length ? JSON.stringify(state.csvFiles) : null,
     slack_channel_id: document.getElementById('slack-channel-id').value || null,
     slack_bot_token: document.getElementById('slack-bot-token').value || null,
-    gmail_query: document.getElementById('gmail-query').value || null,
     trello_board_id: document.getElementById('trello-board-id').value || null,
-    trello_key: document.getElementById('trello-key').value || null,
-    trello_token: document.getElementById('trello-token').value || null,
   };
 
   const btn = document.getElementById('save-profile-btn');
@@ -585,23 +576,6 @@ async function fetchSlackData(channelId, token) {
   } catch (err) { return { data: null, error: err.message }; }
 }
 
-async function fetchGmailData(query) {
-  const call = () => fetch('/api/gmail-context', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query, token: localStorage.getItem('gmail_token') }),
-  });
-  try {
-    let res = await call();
-    if (res.status === 401) {
-      const refreshed = await refreshGoogleToken('gmail');
-      if (refreshed) res = await call();
-    }
-    const json = await res.json();
-    if (!res.ok) return { data: null, error: json.error || `HTTP ${res.status}` };
-    return { data: json.text };
-  } catch (err) { return { data: null, error: err.message }; }
-}
 
 async function fetchTrelloData(boardId, key, token) {
   try {
@@ -637,18 +611,14 @@ async function runAnalysis() {
     const client = state.currentClient;
     const slackChannel = client?.slack_channel_id;
     const slackToken = client?.slack_bot_token;
-    const gmailQuery = client?.gmail_query;
     const trelloBoardId = client?.trello_board_id;
-    const trelloKey = client?.trello_key;
-    const trelloToken = client?.trello_token;
 
-    const [gscResult, ga4Result, ahrefsResult, slackResult, gmailResult, trelloResult] = await Promise.all([
+    const [gscResult, ga4Result, ahrefsResult, slackResult, trelloResult] = await Promise.all([
       state.gscConnected ? fetchGscData() : Promise.resolve({ data: null }),
       state.ga4Connected ? fetchGa4Data() : Promise.resolve({ data: null }),
       state.ahrefsKey ? fetchAhrefsData() : Promise.resolve({ data: null }),
       slackChannel && slackToken ? fetchSlackData(slackChannel, slackToken) : Promise.resolve({ data: null }),
-      gmailQuery && state.gmailConnected ? fetchGmailData(gmailQuery) : Promise.resolve({ data: null }),
-      trelloBoardId && trelloKey && trelloToken ? fetchTrelloData(trelloBoardId, trelloKey, trelloToken) : Promise.resolve({ data: null }),
+      trelloBoardId && state.trelloKey && state.trelloToken ? fetchTrelloData(trelloBoardId, state.trelloKey, state.trelloToken) : Promise.resolve({ data: null }),
     ]);
 
     const statusLines = [];
@@ -658,8 +628,7 @@ async function runAnalysis() {
     if (state.winchPdf) statusLines.push('✓ Wincher (PDF)');
     if (state.sistrixPdf) statusLines.push('✓ Sistrix (PDF)');
     if (slackChannel && slackToken) statusLines.push(slackResult.data ? `✓ Slack` : `✗ Slack: ${slackResult.error}`);
-    if (gmailQuery && state.gmailConnected) statusLines.push(gmailResult.data ? `✓ Gmail` : `✗ Gmail: ${gmailResult.error}`);
-    if (trelloBoardId) statusLines.push(trelloResult.data ? `✓ Trello` : `✗ Trello: ${trelloResult.error}`);
+    if (trelloBoardId && state.trelloKey) statusLines.push(trelloResult.data ? `✓ Trello` : `✗ Trello: ${trelloResult.error}`);
     if (state.csvFiles.length) statusLines.push(`✓ Historisk data (${state.csvFiles.length} fil${state.csvFiles.length > 1 ? 'er' : ''})`);
 
     if (statusLines.some(l => l.startsWith('✗'))) {
@@ -679,7 +648,6 @@ async function runAnalysis() {
       sistrix: state.sistrixPdf,
       historical: historicalText,
       slack: slackResult.data,
-      gmail: gmailResult.data,
       trello: trelloResult.data,
     };
 

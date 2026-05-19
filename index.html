@@ -46,7 +46,19 @@
             <button class="btn-connect" id="ahrefs-save">Spara</button>
           </div>
         </div>
+        <div class="connection-item">
+          <div class="connection-info">
+            <span class="connection-name">Trello</span>
+            <span class="connection-status" id="trello-status">Ej ansluten</span>
+          </div>
+          <div class="api-key-row">
+            <input type="text" id="trello-key" placeholder="API-nyckel (trello.com/app-key)">
+            <input type="password" id="trello-token" placeholder="Token">
+            <button class="btn-connect" id="trello-save">Spara</button>
+          </div>
+        </div>
       </div>
+      <p class="settings-note">Slack- och Trello-data skickas till Claude API för analys. Inkludera inte känsliga personuppgifter i anslutna kanaler eller tavlor.</p>
     </section>
 
     <main>
@@ -145,39 +157,12 @@
 
               <div class="integration-block">
                 <div class="integration-header">
-                  <span class="integration-name">Gmail</span>
-                  <span class="integration-hint">Hämtar mejlkonversationer baserat på din sökning</span>
-                </div>
-                <div class="form-row">
-                  <div class="form-group" style="flex:2">
-                    <label for="gmail-query">Sök efter</label>
-                    <input type="text" id="gmail-query" placeholder="t.ex. from:kund@example.com subject:SEO">
-                  </div>
-                  <div class="form-group" style="flex:1; justify-content:flex-end; padding-top:1.4rem">
-                    <button class="btn-connect" id="gmail-connect" style="width:100%">Anslut Gmail</button>
-                  </div>
-                </div>
-                <span class="connection-status" id="gmail-status" style="font-size:0.8rem; color:#6b7280"></span>
-              </div>
-
-              <div class="integration-block">
-                <div class="integration-header">
                   <span class="integration-name">Trello</span>
-                  <span class="integration-hint">Hämtar alla kort från tavlan</span>
+                  <span class="integration-hint">API-nyckel ansluts i Inställningar</span>
                 </div>
-                <div class="form-row">
-                  <div class="form-group">
-                    <label for="trello-board-id">Tavla-ID</label>
-                    <input type="text" id="trello-board-id" placeholder="abc123de">
-                  </div>
-                  <div class="form-group">
-                    <label for="trello-key">API-nyckel</label>
-                    <input type="text" id="trello-key" placeholder="...">
-                  </div>
-                  <div class="form-group">
-                    <label for="trello-token">Token</label>
-                    <input type="password" id="trello-token" placeholder="...">
-                  </div>
+                <div class="form-group">
+                  <label for="trello-board-id">Tavla-ID</label>
+                  <input type="text" id="trello-board-id" placeholder="Finns i tavlans URL: trello.com/b/abc123de/...">
                 </div>
               </div>
 

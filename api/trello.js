@@ -7,7 +7,7 @@ export default async function handler(req, res) {
   try {
     const [listsRes, cardsRes] = await Promise.all([
       fetch(`https://api.trello.com/1/boards/${boardId}/lists?key=${key}&token=${token}`),
-      fetch(`https://api.trello.com/1/boards/${boardId}/cards?key=${key}&token=${token}&fields=name,desc,idList,labels,due,dateLastActivity`),
+      fetch(`https://api.trello.com/1/boards/${boardId}/cards?key=${key}&token=${token}&fields=name,idList,labels,due`),
     ]);
 
     if (!listsRes.ok) return res.status(400).json({ error: 'Kunde inte hämta Trello-tavlan. Kontrollera Board ID och credentials.' });
@@ -22,8 +22,7 @@ export default async function handler(req, res) {
       const listName = listMap[c.idList] || 'Okänd lista';
       if (!byList[listName]) byList[listName] = [];
       const labels = (c.labels || []).map(l => l.name).filter(Boolean).join(', ');
-      const desc = c.desc ? ` — ${c.desc.slice(0, 120).replace(/\n/g, ' ')}` : '';
-      byList[listName].push(`- ${c.name}${labels ? ` [${labels}]` : ''}${desc}`);
+      byList[listName].push(`- ${c.name}${labels ? ` [${labels}]` : ''}`);
     });
 
     const text = Object.entries(byList)
