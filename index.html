@@ -168,8 +168,12 @@
           </div>
           <div class="source-config hidden" id="gsc-config">
             <div class="form-group">
-              <label for="gsc-site">Webbplats</label>
-              <select id="gsc-site"><option value="">Hämtar sajter...</option></select>
+              <label for="gsc-site-search">Webbplats</label>
+              <div class="combobox" id="gsc-site-wrapper">
+                <input type="text" id="gsc-site-search" placeholder="Sök sajt..." autocomplete="off">
+                <input type="hidden" id="gsc-site">
+                <ul class="combobox-list" id="gsc-site-list"></ul>
+              </div>
             </div>
           </div>
         </div>

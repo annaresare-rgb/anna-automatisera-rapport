@@ -313,6 +313,37 @@ textarea { height: 100px; resize: vertical; line-height: 1.5; }
 
 .toggle-arrow { font-size: 0.75rem; color: #9ca3af; }
 
+.combobox { position: relative; }
+.combobox input[type="text"] { width: 100%; }
+.combobox-list {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0; right: 0;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 100;
+  padding: 4px 0;
+  margin: 0;
+  list-style: none;
+  display: none;
+}
+.combobox-list.open { display: block; }
+.combobox-list li {
+  padding: 8px 14px;
+  font-size: 0.875rem;
+  color: #374151;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.combobox-list li:hover, .combobox-list li.active { background: #f3f4f6; }
+.combobox-list li.no-results { color: #9ca3af; cursor: default; }
+
 .hidden { display: none; }
 
 @media (max-width: 600px) {

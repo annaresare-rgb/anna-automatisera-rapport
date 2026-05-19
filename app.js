@@ -110,8 +110,15 @@ function updateConnectionUI(type, connected) {
 }
 
 async function loadGscSites() {
-  const select = document.getElementById('gsc-site');
-  select.innerHTML = '<option value="">Hämtar sajter...</option>';
+  const searchInput = document.getElementById('gsc-site-search');
+  const hiddenInput = document.getElementById('gsc-site');
+  const list = document.getElementById('gsc-site-list');
+  const wrapper = document.getElementById('gsc-site-wrapper');
+
+  searchInput.value = '';
+  searchInput.placeholder = 'Hämtar sajter...';
+  searchInput.disabled = true;
+
   try {
     const res = await fetch('/api/gsc-sites', {
       method: 'POST',
@@ -119,15 +126,60 @@ async function loadGscSites() {
       body: JSON.stringify({ token: localStorage.getItem('gsc_token') }),
     });
     const json = await res.json();
-    if (!res.ok) { select.innerHTML = `<option value="">Fel: ${json.error}</option>`; return; }
-    select.innerHTML = json.sites.map(s => `<option value="${s}">${s}</option>`).join('');
+    searchInput.disabled = false;
+    searchInput.placeholder = 'Sök sajt...';
+
+    if (!res.ok) { searchInput.placeholder = `Fel: ${json.error}`; return; }
+
+    const sites = json.sites;
+
+    function renderList(filter) {
+      const matches = filter
+        ? sites.filter(s => s.toLowerCase().includes(filter.toLowerCase()))
+        : sites;
+      if (!matches.length) {
+        list.innerHTML = '<li class="no-results">Inga träffar</li>';
+      } else {
+        list.innerHTML = matches.map(s => `<li data-value="${s}">${s}</li>`).join('');
+      }
+    }
+
+    // Only attach listeners once (flag on wrapper)
+    if (!wrapper._gscInit) {
+      wrapper._gscInit = true;
+
+      searchInput.addEventListener('focus', () => {
+        renderList(searchInput.value);
+        list.classList.add('open');
+      });
+
+      searchInput.addEventListener('input', () => {
+        hiddenInput.value = '';
+        renderList(searchInput.value);
+        list.classList.add('open');
+      });
+
+      list.addEventListener('mousedown', (e) => {
+        const li = e.target.closest('li[data-value]');
+        if (!li) return;
+        hiddenInput.value = li.dataset.value;
+        searchInput.value = li.dataset.value;
+        list.classList.remove('open');
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!wrapper.contains(e.target)) list.classList.remove('open');
+      });
+    }
 
     // Pre-select client's saved site
     if (state.currentClient?.gsc_site) {
-      select.value = state.currentClient.gsc_site;
+      hiddenInput.value = state.currentClient.gsc_site;
+      searchInput.value = state.currentClient.gsc_site;
     }
   } catch (err) {
-    select.innerHTML = '<option value="">Kunde inte hämta sajter</option>';
+    searchInput.disabled = false;
+    searchInput.placeholder = 'Kunde inte hämta sajter';
   }
 }
 
