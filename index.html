@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SEO Rapport</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="logo">SEO Rapport</div>
+    </header>
+
+    <main>
+      <section class="card">
+        <h2>Kund &amp; period</h2>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="client-name">Kundnamn</label>
+            <input type="text" id="client-name" placeholder="Skriv kundens namn">
+          </div>
+          <div class="form-group">
+            <label for="language">Språk</label>
+            <select id="language">
+              <option value="sv">Svenska</option>
+              <option value="en">Engelska</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="current-period">Aktuell period</label>
+            <input type="month" id="current-period">
+          </div>
+          <div class="form-group">
+            <label for="compare-with">Jämför med</label>
+            <select id="compare-with">
+              <option value="both">Föregående månad &amp; år</option>
+              <option value="prev-month">Föregående månad</option>
+              <option value="prev-year">Föregående år</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Klistra in data</h2>
+        <p class="section-hint">Du behöver inte fylla i alla — klistra in det du har.</p>
+
+        <div class="data-source">
+          <div class="source-header">
+            <span class="source-label">Google Search Console</span>
+            <span class="source-hint">Klick, impressions, brand/non-brand</span>
+          </div>
+          <textarea id="gsc-data" placeholder="Klistra in data från Google Search Console..."></textarea>
+        </div>
+
+        <div class="data-source">
+          <div class="source-header">
+            <span class="source-label">Google Analytics 4</span>
+            <span class="source-hint">Organisk trafik, konverteringar, AI-trafik</span>
+          </div>
+          <textarea id="ga4-data" placeholder="Klistra in data från GA4..."></textarea>
+        </div>
+
+        <div class="data-source">
+          <div class="source-header">
+            <span class="source-label">Sistrix</span>
+            <span class="source-hint">Synlighetsindex</span>
+          </div>
+          <textarea id="sistrix-data" placeholder="Klistra in data från Sistrix..."></textarea>
+        </div>
+
+        <div class="data-source">
+          <div class="source-header">
+            <span class="source-label">Wincher</span>
+            <span class="source-hint">Rankingar</span>
+          </div>
+          <textarea id="wincher-data" placeholder="Klistra in data från Wincher..."></textarea>
+        </div>
+      </section>
+
+      <button class="btn-primary" id="analyze-btn">Analysera data</button>
+
+      <section class="card hidden" id="result-card">
+        <div class="result-header">
+          <h2>Analys &amp; rapport</h2>
+          <button class="btn-copy" id="copy-btn">Kopiera text</button>
+        </div>
+        <div id="analysis-output"></div>
+      </section>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
