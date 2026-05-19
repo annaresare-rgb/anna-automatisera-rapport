@@ -5,7 +5,7 @@ export default async function handler(req, res) {
   if (!token) return res.status(400).json({ error: 'Token saknas' });
 
   try {
-    const response = await fetch('https://searchconsole.googleapis.com/v1/sites', {
+    const response = await fetch('https://www.googleapis.com/webmasters/v3/sites', {
       headers: { Authorization: `Bearer ${token}` },
     });
 

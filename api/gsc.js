@@ -10,7 +10,7 @@ export default async function handler(req, res) {
   const endDate = `${year}-${month}-${lastDay}`;
 
   const query = (dimensions, extra = {}) =>
-    fetch(`https://searchconsole.googleapis.com/v1/sites/${encodeURIComponent(site)}/searchAnalytics/query`, {
+    fetch(`https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(site)}/searchAnalytics/query`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -21,7 +21,7 @@ export default async function handler(req, res) {
 
   try {
     // Test auth first with a simple overall query
-    const overallRes = await fetch(`https://searchconsole.googleapis.com/v1/sites/${encodeURIComponent(site)}/searchAnalytics/query`, {
+    const overallRes = await fetch(`https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(site)}/searchAnalytics/query`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ startDate, endDate, dimensions: [], rowLimit: 1 }),
