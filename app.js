@@ -365,7 +365,7 @@ async function fetchGa4Data() {
     const res = await fetch('/api/ga4', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ propertyId, period, compareWith, token: localStorage.getItem('ga4_token') }),
+      body: JSON.stringify({ propertyId, period, compareWith, token: localStorage.getItem('ga4_token'), conversionEvents: document.getElementById('profile-conversions').value }),
     });
     const json = await res.json();
     if (!res.ok) return { data: null, error: json.error || `HTTP ${res.status}` };

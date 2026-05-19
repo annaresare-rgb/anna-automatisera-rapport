@@ -1,7 +1,7 @@
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
 
-  const { propertyId, period, token, compareWith = 'prev-month' } = req.body;
+  const { propertyId, period, token, compareWith = 'prev-month', conversionEvents = '' } = req.body;
   if (!propertyId || !period || !token) return res.status(400).json({ error: 'Missing parameters' });
 
   const [y, m] = period.split('-').map(Number);
@@ -27,6 +27,30 @@ export default async function handler(req, res) {
     filter: { fieldName: 'sessionDefaultChannelGroup', stringFilter: { value: 'Organic Search' } },
   };
 
+  const eventNames = conversionEvents.split(',').map(s => s.trim()).filter(Boolean);
+
+  // If specific events are named, fetch breakdown by event name; otherwise total conversions
+  function convReportBody(startDate, endDate) {
+    if (eventNames.length > 0) {
+      return {
+        dimensions: [{ name: 'eventName' }],
+        metrics: [{ name: 'conversions' }],
+        dimensionFilter: {
+          andGroup: {
+            expressions: [
+              organicFilter,
+              { filter: { fieldName: 'eventName', inListFilter: { values: eventNames } } },
+            ],
+          },
+        },
+      };
+    }
+    return {
+      metrics: [{ name: 'conversions' }, { name: 'totalRevenue' }],
+      dimensionFilter: organicFilter,
+    };
+  }
+
   try {
     const compPeriods = [];
     if (compareWith === 'prev-month' || compareWith === 'both') compPeriods.push({ dates: prevM, label: `Föregående månad (${prevM.label})` });
@@ -37,10 +61,7 @@ export default async function handler(req, res) {
         metrics: [{ name: 'sessions' }, { name: 'totalUsers' }],
         dimensionFilter: organicFilter,
       }),
-      runReport(cur.start, cur.end, {
-        metrics: [{ name: 'conversions' }, { name: 'totalRevenue' }],
-        dimensionFilter: organicFilter,
-      }),
+      runReport(cur.start, cur.end, convReportBody(cur.start, cur.end)),
       runReport(cur.start, cur.end, {
         dimensions: [{ name: 'sessionSource' }],
         metrics: [{ name: 'sessions' }],
@@ -55,10 +76,9 @@ export default async function handler(req, res) {
           },
         },
       }),
-      // Comparison periods: organic + conversions per period
       ...compPeriods.flatMap(({ dates }) => [
         runReport(dates.start, dates.end, { metrics: [{ name: 'sessions' }, { name: 'totalUsers' }], dimensionFilter: organicFilter }),
-        runReport(dates.start, dates.end, { metrics: [{ name: 'conversions' }, { name: 'totalRevenue' }], dimensionFilter: organicFilter }),
+        runReport(dates.start, dates.end, convReportBody(dates.start, dates.end)),
       ]),
     ]);
 
@@ -75,11 +95,12 @@ export default async function handler(req, res) {
       const d = ((c - p) / p * 100);
       return ` (${d >= 0 ? '+' : ''}${d.toFixed(1)}%)`;
     }
+    function rowsByEvent(data) {
+      return Object.fromEntries((data.rows || []).map(r => [r.dimensionValues[0].value, Number(r.metricValues[0].value)]));
+    }
 
     const curSessions = curOrganic.rows?.[0]?.metricValues?.[0]?.value;
     const curUsers = curOrganic.rows?.[0]?.metricValues?.[1]?.value;
-    const curConvs = curConv.rows?.[0]?.metricValues?.[0]?.value;
-    const curRevenue = curConv.rows?.[0]?.metricValues?.[1]?.value;
 
     let text = `Organisk trafik (${cur.label}):\nSessioner: ${fmt(curSessions)} | Användare: ${fmt(curUsers)}\n`;
 
@@ -89,13 +110,37 @@ export default async function handler(req, res) {
       if (s != null) text += `vs. ${c.label}: Sessioner: ${fmt(s)}${pct(curSessions, s)} | Användare: ${fmt(u)}${pct(curUsers, u)}\n`;
     }
 
-    text += `\nKonverteringar organisk trafik (${cur.label}):\nKonverteringar: ${fmt(curConvs)}`;
-    if (Number(curRevenue) > 0) text += ` | Omsättning: ${fmt(curRevenue)} kr`;
-    text += '\n';
+    text += `\nKonverteringar organisk trafik (${cur.label}):\n`;
 
-    for (const c of comps) {
-      const cv = c.conv.rows?.[0]?.metricValues?.[0]?.value;
-      if (cv != null) text += `vs. ${c.label}: Konverteringar: ${fmt(cv)}${pct(curConvs, cv)}\n`;
+    if (eventNames.length > 0) {
+      // Per-event breakdown with comparison
+      const curByEvent = rowsByEvent(curConv);
+      const compByEvent = comps.map(c => rowsByEvent(c.conv));
+
+      if (Object.keys(curByEvent).length === 0) {
+        text += `Inga key events hittades för: ${eventNames.join(', ')}. Kontrollera att event-namnen stämmer exakt med GA4.\n`;
+      } else {
+        eventNames.forEach(ev => {
+          const count = curByEvent[ev] ?? 0;
+          text += `${ev}: ${fmt(count)}`;
+          comps.forEach((c, i) => {
+            const prev = compByEvent[i][ev] ?? 0;
+            text += ` | vs. ${c.label.split(' (')[0]}: ${fmt(prev)}${pct(count, prev)}`;
+          });
+          text += '\n';
+        });
+      }
+    } else {
+      // Total conversions fallback
+      const curConvs = curConv.rows?.[0]?.metricValues?.[0]?.value;
+      const curRevenue = curConv.rows?.[0]?.metricValues?.[1]?.value;
+      text += `Konverteringar: ${fmt(curConvs)}`;
+      if (Number(curRevenue) > 0) text += ` | Omsättning: ${fmt(curRevenue)} kr`;
+      text += '\n';
+      for (const c of comps) {
+        const cv = c.conv.rows?.[0]?.metricValues?.[0]?.value;
+        if (cv != null) text += `vs. ${c.label}: Konverteringar: ${fmt(cv)}${pct(curConvs, cv)}\n`;
+      }
     }
 
     text += `\nAI-trafik (${cur.label}):\n`;
