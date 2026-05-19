@@ -40,7 +40,9 @@ Gör följande:
 
 5. **Förslag på nästa steg** – 1–2 konkreta åtgärder.
 
-Skriv svaret på ${langLabel}. Var specifik och använd siffror. Skriv som om du pratar direkt till kunden — tydligt, vänligt och professionellt.`;
+Skriv svaret på ${langLabel}. Var specifik och använd siffror. Skriv som om du pratar direkt till kunden — tydligt, vänligt och professionellt.
+
+För varje påstående eller siffra — ange inom parentes vilken datakälla det kommer från, t.ex. (Google Search Console), (GA4), (Ahrefs), (Wincher) eller (Sistrix). Avsluta rapporten med en rad "Källor:" som listar alla datakällor som användes.`;
 
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
