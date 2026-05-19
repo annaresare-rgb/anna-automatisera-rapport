@@ -71,6 +71,31 @@ function updateConnectionUI(type, connected) {
     if (action) action.innerHTML = '<span class="tag tag-online">Ansluten</span>';
     if (config) config.classList.remove('hidden');
     document.getElementById(`${type}-connect`).textContent = 'Återanslut';
+
+    if (type === 'gsc') loadGscSites();
+  }
+}
+
+async function loadGscSites() {
+  const select = document.getElementById('gsc-site');
+  select.innerHTML = '<option value="">Hämtar sajter...</option>';
+
+  try {
+    const res = await fetch('/api/gsc-sites', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: localStorage.getItem('gsc_token') }),
+    });
+    const json = await res.json();
+
+    if (!res.ok) {
+      select.innerHTML = `<option value="">Fel: ${json.error}</option>`;
+      return;
+    }
+
+    select.innerHTML = json.sites.map(s => `<option value="${s}">${s}</option>`).join('');
+  } catch (err) {
+    select.innerHTML = '<option value="">Kunde inte hämta sajter</option>';
   }
 }
 
