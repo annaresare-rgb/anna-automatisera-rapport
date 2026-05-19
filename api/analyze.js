@@ -69,10 +69,11 @@ Format: ${formatInstructions[reportFormat] || formatInstructions.email}
 
 Struktur:
 1. **Sammanfattning** – Det viktigaste om den här perioden.
-2. **Vad gick bra** – Positiva förändringar med siffror.
-3. **Vad försämrades** – Negativa förändringar med siffror.
-4. **Slutsatser** – 2–3 konkreta insikter.
-5. **Nästa steg** – 1–2 åtgärder.
+2. **Trend** – Om trenddata (6 månader) finns: beskriv riktningen i klick/sessioner i en mening (t.ex. "Trafiken ökade stadigt jan–mar, tappade i april–maj").
+3. **Vad gick bra** – Positiva förändringar med siffror.
+4. **Vad försämrades** – Negativa förändringar med siffror.
+5. **Slutsatser** – 2–3 konkreta insikter.
+6. **Nästa steg** – 1–2 åtgärder.
 
 Skriv på ${langLabel}. Var specifik och använd siffror. Avsluta med "**Källor:** [lista]".`;
 

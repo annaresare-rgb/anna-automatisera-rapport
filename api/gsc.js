@@ -16,6 +16,14 @@ export default async function handler(req, res) {
   const prevM = m === 1 ? periodDates(y - 1, 12) : periodDates(y, m - 1);
   const prevY = periodDates(y - 1, m);
 
+  // 6-month trend: current month + 5 preceding months (oldest first)
+  const trend6 = [];
+  for (let i = 5; i >= 0; i--) {
+    let tm = m - i, ty = y;
+    while (tm <= 0) { tm += 12; ty--; }
+    trend6.push(periodDates(ty, tm));
+  }
+
   const gscFetch = (startDate, endDate, dimensions, extra = {}) =>
     fetch(`https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(site)}/searchAnalytics/query`, {
       method: 'POST',
@@ -51,13 +59,17 @@ export default async function handler(req, res) {
       dimensionFilterGroups: [{ filters: [{ dimension: 'query', operator: op, expression: brandRegex }] }],
     });
 
-    const [byPage, byQuery, brandOverall, nonBrandOverall, ...compOveralls] = await Promise.all([
+    const [byPage, byQuery, brandOverall, nonBrandOverall, ...rest] = await Promise.all([
       gscFetch(cur.start, cur.end, ['page']),
       gscFetch(cur.start, cur.end, ['query']),
       brandRegex ? gscFetch(cur.start, cur.end, [], brandFilter('includingRegex')) : Promise.resolve(null),
       brandRegex ? gscFetch(cur.start, cur.end, [], brandFilter('excludingRegex')) : Promise.resolve(null),
       ...compPeriods.map(({ dates }) => gscFetch(dates.start, dates.end, [])),
+      ...trend6.map(d => gscFetch(d.start, d.end, [])),
     ]);
+
+    const compOveralls = rest.slice(0, compPeriods.length);
+    const trendResults = rest.slice(compPeriods.length);
 
     function fmt(n) { return n != null ? Number(n).toLocaleString('sv-SE') : '—'; }
     function pct(curr, prev) {
@@ -97,6 +109,16 @@ export default async function handler(req, res) {
     text += `\nTopp sökfraser (${cur.label}):\n`;
     (byQuery.rows || []).slice(0, 10).forEach((r, i) => {
       text += `${i + 1}. "${r.keys[0]}" — ${fmt(r.clicks)} klick, ${fmt(r.impressions)} imp, ${(r.ctr * 100).toFixed(1)}% CTR, pos ${r.position.toFixed(1)}\n`;
+    });
+
+    text += `\nTrend 6 månader (GSC):\n`;
+    trend6.forEach((d, i) => {
+      const r = trendResults[i]?.rows?.[0];
+      if (r) {
+        text += `${d.label}: ${fmt(r.clicks)} klick | ${fmt(r.impressions)} imp | pos ${r.position.toFixed(1)}\n`;
+      } else {
+        text += `${d.label}: ingen data\n`;
+      }
     });
 
     res.status(200).json({ text });

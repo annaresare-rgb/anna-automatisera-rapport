@@ -16,6 +16,14 @@ export default async function handler(req, res) {
   const prevM = m === 1 ? periodDates(y - 1, 12) : periodDates(y, m - 1);
   const prevY = periodDates(y - 1, m);
 
+  // 6-month trend: current month + 5 preceding months (oldest first)
+  const trend6 = [];
+  for (let i = 5; i >= 0; i--) {
+    let tm = m - i, ty = y;
+    while (tm <= 0) { tm += 12; ty--; }
+    trend6.push(periodDates(ty, tm));
+  }
+
   const runReport = (startDate, endDate, body) =>
     fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`, {
       method: 'POST',
@@ -56,7 +64,7 @@ export default async function handler(req, res) {
     if (compareWith === 'prev-month' || compareWith === 'both') compPeriods.push({ dates: prevM, label: `Föregående månad (${prevM.label})` });
     if (compareWith === 'prev-year' || compareWith === 'both') compPeriods.push({ dates: prevY, label: `Föregående år (${prevY.label})` });
 
-    const [curOrganic, curConv, aiTraffic, ...compResults] = await Promise.all([
+    const [curOrganic, curConv, aiTraffic, ...rest] = await Promise.all([
       runReport(cur.start, cur.end, {
         metrics: [{ name: 'sessions' }, { name: 'totalUsers' }],
         dimensionFilter: organicFilter,
@@ -80,7 +88,15 @@ export default async function handler(req, res) {
         runReport(dates.start, dates.end, { metrics: [{ name: 'sessions' }, { name: 'totalUsers' }], dimensionFilter: organicFilter }),
         runReport(dates.start, dates.end, convReportBody(dates.start, dates.end)),
       ]),
+      ...trend6.map(d => runReport(d.start, d.end, {
+        metrics: [{ name: 'sessions' }],
+        dimensionFilter: organicFilter,
+      })),
     ]);
+
+    const compSlots = compPeriods.length * 2;
+    const compResults = rest.slice(0, compSlots);
+    const trendResults = rest.slice(compSlots);
 
     const comps = compPeriods.map((p, i) => ({
       label: p.label,
@@ -151,6 +167,14 @@ export default async function handler(req, res) {
     } else {
       text += `Ingen AI-trafik registrerad.\n`;
     }
+
+    text += `\nTrend 6 månader (GA4 organisk):\n`;
+    trend6.forEach((d, i) => {
+      const s = trendResults[i]?.rows?.[0]?.metricValues?.[0]?.value;
+      text += s != null
+        ? `${d.label}: ${fmt(s)} sessioner\n`
+        : `${d.label}: ingen data\n`;
+    });
 
     res.status(200).json({ text });
   } catch (err) {
