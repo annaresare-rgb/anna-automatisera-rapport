@@ -20,16 +20,35 @@ export default async function handler(req, res) {
     }).then(r => r.json());
 
   try {
-    const [overall, byPage, byQuery, brand, nonBrand] = await Promise.all([
-      query([]),
+    // Test auth first with a simple overall query
+    const overallRes = await fetch(`https://searchconsole.googleapis.com/v1/sites/${encodeURIComponent(site)}/searchAnalytics/query`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ startDate, endDate, dimensions: [], rowLimit: 1 }),
+    });
+
+    if (overallRes.status === 401) {
+      return res.status(401).json({ error: 'Google-inloggningen har gått ut. Koppla om Search Console i Inställningar.' });
+    }
+    if (overallRes.status === 403) {
+      return res.status(403).json({ error: 'Du har inte åtkomst till den här webbplatsen i Search Console. Kontrollera att adressen stämmer.' });
+    }
+    if (!overallRes.ok) {
+      const errText = await overallRes.text();
+      console.error('GSC error:', overallRes.status, errText);
+      return res.status(502).json({ error: `Google svarade med fel ${overallRes.status}` });
+    }
+
+    const overall = await overallRes.json();
+
+    const [byPage, byQuery] = await Promise.all([
       query(['page']),
       query(['query']),
-      query(['query'], { dimensionFilterGroups: [{ filters: [{ dimension: 'query', operator: 'includingRegex', expression: process.env.BRAND_REGEX || '.*' }] }] }),
-      query(['query'], { dimensionFilterGroups: [{ filters: [{ dimension: 'query', operator: 'excludingRegex', expression: process.env.BRAND_REGEX || '^$' }] }] }),
     ]);
 
-    res.status(200).json({ overall, topPages: byPage, topQueries: byQuery, brand, nonBrand });
+    res.status(200).json({ overall, topPages: byPage, topQueries: byQuery });
   } catch (err) {
+    console.error('GSC exception:', err);
     res.status(500).json({ error: err.message });
   }
 }
