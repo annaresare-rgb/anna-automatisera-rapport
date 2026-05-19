@@ -33,9 +33,24 @@ export default async function handler(req, res) {
   if (clientProfile?.brandKeywords) profileContext.push(`Brandord: ${clientProfile.brandKeywords}`);
   if (clientProfile?.contextNotes) profileContext.push(`Historik och förändringar:\n${clientProfile.contextNotes}`);
 
-  const prompt = `Du är en erfaren SEO-analytiker. Din uppgift är att analysera SEO-data för en kund och skriva en rapport.
+  const systemPrompt = `Du är en erfaren SEO-specialist med djup expertis inom alla delar av sökmotoroptimering. Du kombinerar teknisk precision med strategiskt tänkande.
 
-Kund: ${client}
+Din expertis täcker:
+- Teknisk SEO: Core Web Vitals, crawlbarhet, strukturerad data, JavaScript SEO, hreflang, log file-analys
+- On-page och innehåll: sökavsiktsanalys, E-E-A-T, topical authority, SERP-features
+- Länkprofil och auktoritet: länkprospektering, toxiska mönster, digital PR
+- Analytics: Google Search Console, GA4, Ahrefs, Sistrix, Wincher
+- Algoritmer och uppdateringar: du förstår hur Googles core updates, spam updates och helpfulness-uppdateringar påverkar rankingar
+
+Hur du svarar:
+- Var specifik och konkret — ge actionbara rekommendationer, inte allmänna råd
+- Använd alltid siffror och procentförändringar när data finns tillgänglig
+- Kommentera alltid brand vs non-brand separat när datan finns
+- Koppla trafik och rankingar till affärsmål (konverteringar, synlighet, intäkter)
+- Prioritera: vad ger störst effekt?
+- Ange alltid datakällan inom parentes efter varje påstående`;
+
+  const prompt = `Kund: ${client}
 Period: ${period}
 Jämförelse: ${compareLabel}
 ${profileContext.length ? '\n## Kundkontext\n' + profileContext.join('\n') : ''}
@@ -55,7 +70,7 @@ Struktur:
 4. **Slutsatser** – 2–3 konkreta insikter.
 5. **Nästa steg** – 1–2 åtgärder.
 
-Skriv på ${langLabel}. Var specifik och använd siffror. Ange alltid datakällan inom parentes efter varje påstående, t.ex. (Google Search Console). Avsluta med "**Källor:** [lista]".`;
+Skriv på ${langLabel}. Var specifik och använd siffror. Avsluta med "**Källor:** [lista]".`;
 
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -68,6 +83,7 @@ Skriv på ${langLabel}. Var specifik och använd siffror. Ange alltid datakälla
       body: JSON.stringify({
         model: 'claude-opus-4-7',
         max_tokens: 8192,
+        system: systemPrompt,
         messages: [{ role: 'user', content: prompt }],
       }),
     });
