@@ -1,32 +1,36 @@
-import { createClient } from '@supabase/supabase-js';
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY;
 
-const supabase = () => createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+const headers = {
+  'Content-Type': 'application/json',
+  'apikey': SUPABASE_KEY,
+  'Authorization': `Bearer ${SUPABASE_KEY}`,
+};
 
 export default async function handler(req, res) {
   try {
-    const db = supabase();
-
     if (req.method === 'GET') {
-      const { data, error } = await db.from('clients').select('*').order('name');
-      if (error) { console.error('GET clients error:', error); return res.status(500).json({ error: error.message }); }
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/clients?select=*&order=name`, { headers });
+      const data = await r.json();
+      if (!r.ok) return res.status(500).json({ error: data });
       return res.status(200).json(data);
     }
 
     if (req.method === 'POST') {
-      console.log('POST clients body:', JSON.stringify(req.body));
-      const client = req.body;
-      const { data, error } = await db
-        .from('clients')
-        .upsert({ ...client, updated_at: new Date().toISOString() }, { onConflict: 'name' })
-        .select()
-        .single();
-      if (error) { console.error('POST clients error:', error); return res.status(500).json({ error: error.message }); }
-      return res.status(200).json(data);
+      const client = { ...req.body, updated_at: new Date().toISOString() };
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/clients?on_conflict=name`, {
+        method: 'POST',
+        headers: { ...headers, 'Prefer': 'resolution=merge-duplicates,return=representation' },
+        body: JSON.stringify(client),
+      });
+      const data = await r.json();
+      if (!r.ok) return res.status(500).json({ error: data });
+      return res.status(200).json(Array.isArray(data) ? data[0] : data);
     }
 
     res.status(405).end();
   } catch (err) {
-    console.error('clients handler exception:', err);
+    console.error('clients error:', err);
     res.status(500).json({ error: err.message });
   }
 }

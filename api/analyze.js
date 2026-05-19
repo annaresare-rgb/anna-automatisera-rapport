@@ -1,6 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = () => createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY;
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
@@ -79,13 +78,21 @@ Skriv på ${langLabel}. Var specifik och använd siffror. Ange alltid datakälla
 
     // Save report to Supabase
     try {
-      await supabase().from('reports').insert({
-        client_name: client,
-        period,
-        compare_with: compareWith,
-        report_format: reportFormat || 'email',
-        analysis_text: analysis,
-        sources_used: sourcesUsed,
+      await fetch(`${SUPABASE_URL}/rest/v1/reports`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+        },
+        body: JSON.stringify({
+          client_name: client,
+          period,
+          compare_with: compareWith,
+          report_format: reportFormat || 'email',
+          analysis_text: analysis,
+          sources_used: sourcesUsed,
+        }),
       });
     } catch (dbErr) {
       console.error('Could not save report:', dbErr);
