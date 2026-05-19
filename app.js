@@ -340,34 +340,36 @@ async function extractPdfText(file) {
 async function fetchGscData() {
   const site = document.getElementById('gsc-site').value;
   const period = document.getElementById('current-period').value;
+  const compareWith = document.getElementById('compare-with').value;
   if (!site) return { data: null, error: 'Välj webbplats' };
   if (!period) return { data: null, error: 'Period saknas' };
   try {
     const res = await fetch('/api/gsc', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ site, period, token: localStorage.getItem('gsc_token') }),
+      body: JSON.stringify({ site, period, compareWith, token: localStorage.getItem('gsc_token') }),
     });
     const json = await res.json();
     if (!res.ok) return { data: null, error: json.error || `HTTP ${res.status}` };
-    return { data: JSON.stringify(json, null, 2) };
+    return { data: json.text };
   } catch (err) { return { data: null, error: err.message }; }
 }
 
 async function fetchGa4Data() {
   const propertyId = document.getElementById('ga4-property').value.trim();
   const period = document.getElementById('current-period').value;
+  const compareWith = document.getElementById('compare-with').value;
   if (!propertyId) return { data: null, error: 'Property ID saknas' };
   if (!period) return { data: null, error: 'Period saknas' };
   try {
     const res = await fetch('/api/ga4', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ propertyId, period, token: localStorage.getItem('ga4_token') }),
+      body: JSON.stringify({ propertyId, period, compareWith, token: localStorage.getItem('ga4_token') }),
     });
     const json = await res.json();
     if (!res.ok) return { data: null, error: json.error || `HTTP ${res.status}` };
-    return { data: JSON.stringify(json, null, 2) };
+    return { data: json.text };
   } catch (err) { return { data: null, error: err.message }; }
 }
 
