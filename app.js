@@ -28,9 +28,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 // --- Supabase ---
 async function initSupabase() {
   try {
-    const res = await fetch('/api/config');
-    const { supabaseUrl, supabaseKey } = await res.json();
-    state.supabase = supabase.createClient(supabaseUrl, supabaseKey);
+    state.supabase = supabase.createClient(
+      'https://taqwcfvgoeakfufzucyv.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRhcXdjZnZnb2Vha2Z1Znp1Y3l2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkxODI4NTcsImV4cCI6MjA5NDc1ODg1N30.-wp13Z5XmtOfdUve0CbnTJY75q6R_C120pfPKgouMC4'
+    );
   } catch (e) {
     console.warn('Supabase ej tillgänglig:', e);
   }
