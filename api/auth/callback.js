@@ -19,7 +19,7 @@ export default async function handler(req, res) {
     const tokens = await tokenRes.json();
 
     // Pass token back to frontend via query param (stored in localStorage)
-    const param = type === 'ga4' ? 'ga4' : 'gsc';
+    const param = type === 'ga4' ? 'ga4' : type === 'gmail' ? 'gmail' : 'gsc';
     res.redirect(`/?${param}=ok&token=${tokens.access_token}&refresh=${tokens.refresh_token || ''}`);
   } catch (err) {
     res.status(500).send('Inloggning misslyckades: ' + err.message);

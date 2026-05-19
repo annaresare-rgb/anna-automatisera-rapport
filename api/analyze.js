@@ -26,6 +26,10 @@ export default async function handler(req, res) {
   if (data.ahrefs) { sections.push(`## Ahrefs\n${data.ahrefs}`); sourcesUsed.push('Ahrefs'); }
   if (data.wincher) { sections.push(`## Wincher (rankingar)\n${data.wincher}`); sourcesUsed.push('Wincher'); }
   if (data.sistrix) { sections.push(`## Sistrix (synlighet)\n${data.sistrix}`); sourcesUsed.push('Sistrix'); }
+  if (data.historical) { sections.push(`## Historisk data\n${data.historical}`); sourcesUsed.push('Historisk data'); }
+  if (data.slack) { sections.push(`## Slack (teamkommunikation)\n${data.slack}`); sourcesUsed.push('Slack'); }
+  if (data.gmail) { sections.push(`## E-post (kundkommunikation)\n${data.gmail}`); sourcesUsed.push('E-post'); }
+  if (data.trello) { sections.push(`## Trello (pågående arbete)\n${data.trello}`); sourcesUsed.push('Trello'); }
 
   const profileContext = [];
   if (clientProfile?.conversions) profileContext.push(`Konverteringar vi mäter: ${clientProfile.conversions}`);

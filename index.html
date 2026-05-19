@@ -104,6 +104,85 @@
               <label for="profile-notes">Historik &amp; pågående förändringar</label>
               <textarea id="profile-notes" placeholder="t.ex. Ny landningssida lanserades i mars. Bytte byråkampanj i april. Konkurrent X har tappat synlighet..."></textarea>
             </div>
+
+            <!-- Historisk data -->
+            <div class="subsection-toggle" id="historical-toggle">
+              <span>Historisk data</span>
+              <span class="toggle-arrow">▸</span>
+            </div>
+            <div class="subsection-fields hidden" id="historical-fields">
+              <p class="field-hint">Ladda upp CSV-exporter från GSC, GA4 eller egna kalkylblad. Datan inkluderas som bakgrundskontext i analysen.</p>
+              <div class="csv-upload-area">
+                <label class="btn-upload" for="csv-upload-input">+ Lägg till fil</label>
+                <input type="file" id="csv-upload-input" accept=".csv,.tsv,.txt,.xlsx" multiple style="display:none">
+              </div>
+              <ul class="csv-file-list" id="csv-file-list"></ul>
+            </div>
+
+            <!-- Integrationer -->
+            <div class="subsection-toggle" id="integrations-toggle">
+              <span>Integrationer</span>
+              <span class="toggle-arrow">▸</span>
+            </div>
+            <div class="subsection-fields hidden" id="integrations-fields">
+
+              <div class="integration-block">
+                <div class="integration-header">
+                  <span class="integration-name">Slack</span>
+                  <span class="integration-hint">Hämtar de 50 senaste meddelandena från kanalen</span>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="slack-channel-id">Kanal-ID</label>
+                    <input type="text" id="slack-channel-id" placeholder="C0123456789">
+                  </div>
+                  <div class="form-group">
+                    <label for="slack-bot-token">Bot-token</label>
+                    <input type="password" id="slack-bot-token" placeholder="xoxb-...">
+                  </div>
+                </div>
+              </div>
+
+              <div class="integration-block">
+                <div class="integration-header">
+                  <span class="integration-name">Gmail</span>
+                  <span class="integration-hint">Hämtar mejlkonversationer baserat på din sökning</span>
+                </div>
+                <div class="form-row">
+                  <div class="form-group" style="flex:2">
+                    <label for="gmail-query">Sök efter</label>
+                    <input type="text" id="gmail-query" placeholder="t.ex. from:kund@example.com subject:SEO">
+                  </div>
+                  <div class="form-group" style="flex:1; justify-content:flex-end; padding-top:1.4rem">
+                    <button class="btn-connect" id="gmail-connect" style="width:100%">Anslut Gmail</button>
+                  </div>
+                </div>
+                <span class="connection-status" id="gmail-status" style="font-size:0.8rem; color:#6b7280"></span>
+              </div>
+
+              <div class="integration-block">
+                <div class="integration-header">
+                  <span class="integration-name">Trello</span>
+                  <span class="integration-hint">Hämtar alla kort från tavlan</span>
+                </div>
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="trello-board-id">Tavla-ID</label>
+                    <input type="text" id="trello-board-id" placeholder="abc123de">
+                  </div>
+                  <div class="form-group">
+                    <label for="trello-key">API-nyckel</label>
+                    <input type="text" id="trello-key" placeholder="...">
+                  </div>
+                  <div class="form-group">
+                    <label for="trello-token">Token</label>
+                    <input type="password" id="trello-token" placeholder="...">
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
             <button class="btn-save-profile" id="save-profile-btn">Spara kundprofil</button>
           </div>
         </div>
