@@ -30,7 +30,8 @@ export default async function handler(req, res) {
 
     res.status(405).end();
   } catch (err) {
-    console.error('clients error:', err);
-    res.status(500).json({ error: err.message });
+    const detail = { message: err.message, stack: err.stack, supabaseUrl: SUPABASE_URL ? 'set' : 'MISSING', supabaseKey: SUPABASE_KEY ? 'set' : 'MISSING' };
+    console.error('clients error detail:', JSON.stringify(detail));
+    res.status(500).json({ error: err.message, detail });
   }
 }
