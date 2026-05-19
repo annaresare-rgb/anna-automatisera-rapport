@@ -150,13 +150,16 @@ async function initClientSelector() {
 
 async function loadClients() {
   if (!state.supabase) return;
-  const { data } = await state.supabase.from('clients').select('*').order('name');
-  state.clients = data || [];
-  const select = document.getElementById('client-select');
-  const current = select.value;
-  select.innerHTML = '<option value="">— Välj eller skapa ny —</option>' +
-    state.clients.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
-  if (current) select.value = current;
+  try {
+    const { data, error } = await state.supabase.from('clients').select('*').order('name');
+    if (error) { console.error('loadClients error:', error); return; }
+    state.clients = data || [];
+    const select = document.getElementById('client-select');
+    const current = select.value;
+    select.innerHTML = '<option value="">— Välj eller skapa ny —</option>' +
+      state.clients.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+    if (current) select.value = current;
+  } catch (e) { console.error('loadClients exception:', e); }
 }
 
 async function onClientSelect() {
@@ -220,22 +223,24 @@ async function saveClientProfile() {
   btn.disabled = true;
 
   try {
-    const res = await fetch('/api/clients', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(profile),
-    });
-    if (!res.ok) throw new Error();
-    state.currentClient = await res.json();
+    if (!state.supabase) throw new Error('Ingen databasanslutning');
+    const { data, error } = await state.supabase
+      .from('clients')
+      .upsert({ ...profile, updated_at: new Date().toISOString() }, { onConflict: 'name' })
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    state.currentClient = data;
     await loadClients();
     document.getElementById('client-select').value = name;
     document.getElementById('new-client-row').classList.add('hidden');
     btn.textContent = 'Sparad!';
     setTimeout(() => { btn.textContent = 'Spara kundprofil'; btn.disabled = false; }, 2000);
-  } catch {
+  } catch (err) {
+    console.error('saveClientProfile error:', err);
     btn.textContent = 'Spara kundprofil';
     btn.disabled = false;
-    alert('Kunde inte spara. Försök igen.');
+    alert('Kunde inte spara: ' + err.message);
   }
 }
 
@@ -258,11 +263,15 @@ function initHistoryToggle() {
 }
 
 async function loadHistory(clientName) {
-  if (!clientName) return;
+  if (!clientName || !state.supabase) return;
   try {
-    const res = await fetch(`/api/reports-history?client=${encodeURIComponent(clientName)}`);
-    if (!res.ok) return;
-    const reports = await res.json();
+    const { data: reports, error } = await state.supabase
+      .from('reports')
+      .select('id, period, report_format, sources_used, created_at, analysis_text')
+      .eq('client_name', clientName)
+      .order('created_at', { ascending: false })
+      .limit(20);
+    if (error) return;
     const historyCard = document.getElementById('history-card');
     const historyList = document.getElementById('history-list');
 
