@@ -90,7 +90,7 @@
             <div class="form-row">
               <div class="form-group">
                 <label for="profile-brand">Brandord</label>
-                <input type="text" id="profile-brand" placeholder="t.ex. nordichair, nordic chair">
+                <input type="text" id="profile-brand" placeholder="t.ex. nordichair, nordic chair  — eller regex: nordi.*(chair|seating)">
               </div>
               <div class="form-group">
                 <label for="profile-language">Rapportspråk</label>
@@ -256,6 +256,7 @@
     </main>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

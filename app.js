@@ -25,6 +25,23 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('pdf-btn').addEventListener('click', exportPdf);
 });
 
+// --- Token refresh ---
+async function refreshGoogleToken(type) {
+  const refreshToken = localStorage.getItem(`${type}_refresh`);
+  if (!refreshToken) return false;
+  try {
+    const res = await fetch('/api/auth/refresh', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    });
+    if (!res.ok) return false;
+    const { accessToken } = await res.json();
+    localStorage.setItem(`${type}_token`, accessToken);
+    return true;
+  } catch { return false; }
+}
+
 // --- Supabase ---
 async function initSupabase() {
   try {
@@ -297,7 +314,7 @@ function formatLabel(fmt) {
 }
 
 function showHistoricalReport(text) {
-  document.getElementById('analysis-output').textContent = text;
+  document.getElementById('analysis-output').innerHTML = marked.parse(text);
   document.getElementById('result-card').classList.remove('hidden');
   document.getElementById('result-card').scrollIntoView({ behavior: 'smooth' });
 }
@@ -341,14 +358,22 @@ async function fetchGscData() {
   const site = document.getElementById('gsc-site').value;
   const period = document.getElementById('current-period').value;
   const compareWith = document.getElementById('compare-with').value;
+  const brandKeywords = document.getElementById('profile-brand').value;
   if (!site) return { data: null, error: 'Välj webbplats' };
   if (!period) return { data: null, error: 'Period saknas' };
+
+  const call = () => fetch('/api/gsc', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ site, period, compareWith, brandKeywords, token: localStorage.getItem('gsc_token') }),
+  });
+
   try {
-    const res = await fetch('/api/gsc', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ site, period, compareWith, token: localStorage.getItem('gsc_token') }),
-    });
+    let res = await call();
+    if (res.status === 401) {
+      const refreshed = await refreshGoogleToken('gsc');
+      if (refreshed) res = await call();
+    }
     const json = await res.json();
     if (!res.ok) return { data: null, error: json.error || `HTTP ${res.status}` };
     return { data: json.text };
@@ -361,12 +386,23 @@ async function fetchGa4Data() {
   const compareWith = document.getElementById('compare-with').value;
   if (!propertyId) return { data: null, error: 'Property ID saknas' };
   if (!period) return { data: null, error: 'Period saknas' };
+
+  const call = () => fetch('/api/ga4', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      propertyId, period, compareWith,
+      token: localStorage.getItem('ga4_token'),
+      conversionEvents: document.getElementById('profile-conversions').value,
+    }),
+  });
+
   try {
-    const res = await fetch('/api/ga4', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ propertyId, period, compareWith, token: localStorage.getItem('ga4_token'), conversionEvents: document.getElementById('profile-conversions').value }),
-    });
+    let res = await call();
+    if (res.status === 401) {
+      const refreshed = await refreshGoogleToken('ga4');
+      if (refreshed) res = await call();
+    }
     const json = await res.json();
     if (!res.ok) return { data: null, error: json.error || `HTTP ${res.status}` };
     return { data: json.text };
@@ -455,7 +491,7 @@ async function runAnalysis() {
     if (!res.ok) throw new Error('Serverfel');
     const result = await res.json();
 
-    document.getElementById('analysis-output').textContent = result.analysis;
+    document.getElementById('analysis-output').innerHTML = marked.parse(result.analysis);
     document.getElementById('result-card').classList.remove('hidden');
     document.getElementById('result-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
@@ -472,7 +508,7 @@ async function runAnalysis() {
 
 // --- Copy & PDF ---
 function copyText() {
-  navigator.clipboard.writeText(document.getElementById('analysis-output').textContent).then(() => {
+  navigator.clipboard.writeText(document.getElementById('analysis-output').innerText).then(() => {
     const btn = document.getElementById('copy-btn');
     btn.textContent = 'Kopierad!';
     setTimeout(() => btn.textContent = 'Kopiera', 2000);
