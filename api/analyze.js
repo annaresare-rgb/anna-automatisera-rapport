@@ -1,7 +1,5 @@
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  if (req.method !== 'POST') return res.status(405).end();
 
   const { client, language, period, compareWith, data } = req.body;
 
@@ -12,10 +10,11 @@ export default async function handler(req, res) {
     'föregående månad och föregående år';
 
   const sections = [];
-  if (data.gsc) sections.push(`## Google Search Console\n${data.gsc}`);
-  if (data.ga4) sections.push(`## Google Analytics 4\n${data.ga4}`);
-  if (data.sistrix) sections.push(`## Sistrix\n${data.sistrix}`);
-  if (data.wincher) sections.push(`## Wincher\n${data.wincher}`);
+  if (data.gsc) sections.push(`## Google Search Console\n${typeof data.gsc === 'string' ? data.gsc : JSON.stringify(data.gsc, null, 2)}`);
+  if (data.ga4) sections.push(`## Google Analytics 4\n${typeof data.ga4 === 'string' ? data.ga4 : JSON.stringify(data.ga4, null, 2)}`);
+  if (data.ahrefs) sections.push(`## Ahrefs\n${typeof data.ahrefs === 'string' ? data.ahrefs : JSON.stringify(data.ahrefs, null, 2)}`);
+  if (data.wincher) sections.push(`## Wincher (rankingar)\n${data.wincher}`);
+  if (data.sistrix) sections.push(`## Sistrix (synlighet)\n${data.sistrix}`);
 
   const prompt = `Du är en erfaren SEO-analytiker. Din uppgift är att analysera SEO-data för en kund och skriva en tydlig rapport.
 
@@ -58,15 +57,10 @@ Skriv svaret på ${langLabel}. Var specifik och använd siffror. Skriv som om du
       }),
     });
 
-    if (!response.ok) {
-      const err = await response.text();
-      throw new Error(err);
-    }
+    if (!response.ok) throw new Error(await response.text());
 
     const result = await response.json();
-    const analysis = result.content[0].text;
-
-    res.status(200).json({ analysis });
+    res.status(200).json({ analysis: result.content[0].text });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });

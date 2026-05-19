@@ -12,9 +12,45 @@
   <div class="app">
     <header>
       <div class="logo">SEO Rapport</div>
+      <button class="btn-settings" id="settings-toggle">Inställningar</button>
     </header>
 
+    <!-- Inställningar -->
+    <section class="card hidden" id="settings-panel">
+      <h2>Anslutningar</h2>
+
+      <div class="connection-list">
+        <div class="connection-item">
+          <div class="connection-info">
+            <span class="connection-name">Google Search Console</span>
+            <span class="connection-status" id="gsc-status">Ej ansluten</span>
+          </div>
+          <button class="btn-connect" id="gsc-connect">Anslut</button>
+        </div>
+
+        <div class="connection-item">
+          <div class="connection-info">
+            <span class="connection-name">Google Analytics 4</span>
+            <span class="connection-status" id="ga4-status">Ej ansluten</span>
+          </div>
+          <button class="btn-connect" id="ga4-connect">Anslut</button>
+        </div>
+
+        <div class="connection-item">
+          <div class="connection-info">
+            <span class="connection-name">Ahrefs</span>
+            <span class="connection-status" id="ahrefs-status">Ej ansluten</span>
+          </div>
+          <div class="api-key-row">
+            <input type="password" id="ahrefs-key" placeholder="Klistra in din Ahrefs API-nyckel">
+            <button class="btn-connect" id="ahrefs-save">Spara</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <main>
+      <!-- Kund & period -->
       <section class="card">
         <h2>Kund &amp; period</h2>
         <div class="form-row">
@@ -46,40 +82,91 @@
         </div>
       </section>
 
+      <!-- Datakällor -->
       <section class="card">
-        <h2>Klistra in data</h2>
-        <p class="section-hint">Du behöver inte fylla i alla — klistra in det du har.</p>
+        <h2>Datakällor</h2>
 
-        <div class="data-source">
-          <div class="source-header">
-            <span class="source-label">Google Search Console</span>
-            <span class="source-hint">Klick, impressions, brand/non-brand</span>
+        <!-- GSC -->
+        <div class="source-block" id="gsc-block">
+          <div class="source-row">
+            <div class="source-meta">
+              <span class="source-name">Google Search Console</span>
+              <span class="source-desc">Klick, impressions, rankingar, brand/non-brand</span>
+            </div>
+            <div class="source-action" id="gsc-action">
+              <span class="tag tag-offline">Inte ansluten — gå till Inställningar</span>
+            </div>
           </div>
-          <textarea id="gsc-data" placeholder="Klistra in data från Google Search Console..."></textarea>
+          <div class="source-config hidden" id="gsc-config">
+            <div class="form-group">
+              <label for="gsc-site">Webbplats (t.ex. https://dinsite.se/)</label>
+              <input type="text" id="gsc-site" placeholder="https://dinsite.se/">
+            </div>
+          </div>
         </div>
 
-        <div class="data-source">
-          <div class="source-header">
-            <span class="source-label">Google Analytics 4</span>
-            <span class="source-hint">Organisk trafik, konverteringar, AI-trafik</span>
+        <!-- GA4 -->
+        <div class="source-block" id="ga4-block">
+          <div class="source-row">
+            <div class="source-meta">
+              <span class="source-name">Google Analytics 4</span>
+              <span class="source-desc">Organisk trafik, konverteringar, AI-trafik</span>
+            </div>
+            <div class="source-action" id="ga4-action">
+              <span class="tag tag-offline">Inte ansluten — gå till Inställningar</span>
+            </div>
           </div>
-          <textarea id="ga4-data" placeholder="Klistra in data från GA4..."></textarea>
+          <div class="source-config hidden" id="ga4-config">
+            <div class="form-group">
+              <label for="ga4-property">Property ID (t.ex. 123456789)</label>
+              <input type="text" id="ga4-property" placeholder="123456789">
+            </div>
+          </div>
         </div>
 
-        <div class="data-source">
-          <div class="source-header">
-            <span class="source-label">Sistrix</span>
-            <span class="source-hint">Synlighetsindex</span>
+        <!-- Ahrefs -->
+        <div class="source-block" id="ahrefs-block">
+          <div class="source-row">
+            <div class="source-meta">
+              <span class="source-name">Ahrefs</span>
+              <span class="source-desc">Organiska nyckelord, trafik, domänstyrka</span>
+            </div>
+            <div class="source-action" id="ahrefs-action">
+              <span class="tag tag-offline">Inte ansluten — gå till Inställningar</span>
+            </div>
           </div>
-          <textarea id="sistrix-data" placeholder="Klistra in data från Sistrix..."></textarea>
+          <div class="source-config hidden" id="ahrefs-config">
+            <div class="form-group">
+              <label for="ahrefs-domain">Domän (t.ex. dinsite.se)</label>
+              <input type="text" id="ahrefs-domain" placeholder="dinsite.se">
+            </div>
+          </div>
         </div>
 
-        <div class="data-source">
-          <div class="source-header">
-            <span class="source-label">Wincher</span>
-            <span class="source-hint">Rankingar</span>
+        <!-- Wincher PDF -->
+        <div class="source-block">
+          <div class="source-row">
+            <div class="source-meta">
+              <span class="source-name">Wincher</span>
+              <span class="source-desc">Rankingar — ladda upp PDF-export</span>
+            </div>
+            <label class="btn-upload" for="wincher-pdf">Välj fil</label>
           </div>
-          <textarea id="wincher-data" placeholder="Klistra in data från Wincher..."></textarea>
+          <input type="file" id="wincher-pdf" accept=".pdf" class="file-input">
+          <div class="file-info hidden" id="wincher-file-info"></div>
+        </div>
+
+        <!-- Sistrix PDF -->
+        <div class="source-block">
+          <div class="source-row">
+            <div class="source-meta">
+              <span class="source-name">Sistrix</span>
+              <span class="source-desc">Synlighetsindex — ladda upp PDF-export</span>
+            </div>
+            <label class="btn-upload" for="sistrix-pdf">Välj fil</label>
+          </div>
+          <input type="file" id="sistrix-pdf" accept=".pdf" class="file-input">
+          <div class="file-info hidden" id="sistrix-file-info"></div>
         </div>
       </section>
 
@@ -95,6 +182,8 @@
     </main>
   </div>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
   <script src="app.js"></script>
 </body>
 </html>
