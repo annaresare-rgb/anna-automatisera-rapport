@@ -138,47 +138,61 @@ async function extractPdfText(file) {
 async function fetchGscData() {
   const site = document.getElementById('gsc-site').value.trim();
   const period = document.getElementById('current-period').value;
-  if (!site || !period) return null;
+  if (!site) return { data: null, error: 'Webbplatsadress saknas' };
+  if (!period) return { data: null, error: 'Period saknas' };
 
-  const res = await fetch('/api/gsc', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ site, period, token: localStorage.getItem('gsc_token') }),
-  });
-  if (!res.ok) return null;
-  const data = await res.json();
-  return JSON.stringify(data, null, 2);
+  try {
+    const res = await fetch('/api/gsc', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ site, period, token: localStorage.getItem('gsc_token') }),
+    });
+    const json = await res.json();
+    if (!res.ok) return { data: null, error: json.error || `HTTP ${res.status}` };
+    return { data: JSON.stringify(json, null, 2) };
+  } catch (err) {
+    return { data: null, error: err.message };
+  }
 }
 
 // --- Fetch GA4 data ---
 async function fetchGa4Data() {
   const propertyId = document.getElementById('ga4-property').value.trim();
   const period = document.getElementById('current-period').value;
-  if (!propertyId || !period) return null;
+  if (!propertyId) return { data: null, error: 'Property ID saknas' };
+  if (!period) return { data: null, error: 'Period saknas' };
 
-  const res = await fetch('/api/ga4', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ propertyId, period, token: localStorage.getItem('ga4_token') }),
-  });
-  if (!res.ok) return null;
-  const data = await res.json();
-  return JSON.stringify(data, null, 2);
+  try {
+    const res = await fetch('/api/ga4', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ propertyId, period, token: localStorage.getItem('ga4_token') }),
+    });
+    const json = await res.json();
+    if (!res.ok) return { data: null, error: json.error || `HTTP ${res.status}` };
+    return { data: JSON.stringify(json, null, 2) };
+  } catch (err) {
+    return { data: null, error: err.message };
+  }
 }
 
 // --- Fetch Ahrefs data ---
 async function fetchAhrefsData() {
   const domain = document.getElementById('ahrefs-domain').value.trim();
-  if (!domain || !state.ahrefsKey) return null;
+  if (!domain) return { data: null, error: 'Domän saknas' };
 
-  const res = await fetch('/api/ahrefs', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ domain, apiKey: state.ahrefsKey }),
-  });
-  if (!res.ok) return null;
-  const data = await res.json();
-  return JSON.stringify(data, null, 2);
+  try {
+    const res = await fetch('/api/ahrefs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ domain, apiKey: state.ahrefsKey }),
+    });
+    const json = await res.json();
+    if (!res.ok) return { data: null, error: json.error || `HTTP ${res.status}` };
+    return { data: JSON.stringify(json, null, 2) };
+  } catch (err) {
+    return { data: null, error: err.message };
+  }
 }
 
 // --- Main analysis ---
@@ -198,23 +212,36 @@ async function runAnalysis() {
 
   try {
     // Fetch all data in parallel
-    const [gscRaw, ga4Raw, ahrefsRaw] = await Promise.all([
-      state.gscConnected ? fetchGscData() : Promise.resolve(null),
-      state.ga4Connected ? fetchGa4Data() : Promise.resolve(null),
-      state.ahrefsKey ? fetchAhrefsData() : Promise.resolve(null),
+    const [gscResult, ga4Result, ahrefsResult] = await Promise.all([
+      state.gscConnected ? fetchGscData() : Promise.resolve({ data: null }),
+      state.ga4Connected ? fetchGa4Data() : Promise.resolve({ data: null }),
+      state.ahrefsKey ? fetchAhrefsData() : Promise.resolve({ data: null }),
     ]);
 
+    // Show fetch status to user
+    const statusLines = [];
+    if (state.gscConnected) statusLines.push(gscResult.data ? '✓ Google Search Console' : `✗ Google Search Console: ${gscResult.error}`);
+    if (state.ga4Connected) statusLines.push(ga4Result.data ? '✓ Google Analytics 4' : `✗ Google Analytics 4: ${ga4Result.error}`);
+    if (state.ahrefsKey) statusLines.push(ahrefsResult.data ? '✓ Ahrefs' : `✗ Ahrefs: ${ahrefsResult.error}`);
+    if (state.winchPdf) statusLines.push('✓ Wincher (PDF)');
+    if (state.sistrixPdf) statusLines.push('✓ Sistrix (PDF)');
+
+    if (statusLines.some(l => l.startsWith('✗'))) {
+      const proceed = confirm('En eller flera datakällor kunde inte hämtas:\n\n' + statusLines.join('\n') + '\n\nVill du fortsätta med de källor som fungerade?');
+      if (!proceed) return;
+    }
+
     const data = {
-      gsc: gscRaw,
-      ga4: ga4Raw,
-      ahrefs: ahrefsRaw,
+      gsc: gscResult.data,
+      ga4: ga4Result.data,
+      ahrefs: ahrefsResult.data,
       wincher: state.winchPdf,
       sistrix: state.sistrixPdf,
     };
 
     const hasData = Object.values(data).some(v => v);
     if (!hasData) {
-      alert('Anslut minst en datakälla eller ladda upp en PDF-fil.');
+      alert('Ingen data kunde hämtas. Kontrollera dina anslutningar och försök igen.');
       return;
     }
 
