@@ -37,16 +37,22 @@ function initSettings() {
 // --- Google OAuth ---
 function checkGoogleAuth() {
   const params = new URLSearchParams(window.location.search);
-  if (params.get('gsc') === 'ok') {
+  const token = params.get('token');
+  const refresh = params.get('refresh');
+
+  if (params.get('gsc') === 'ok' && token) {
+    localStorage.setItem('gsc_token', token);
+    if (refresh) localStorage.setItem('gsc_refresh', refresh);
     state.gscConnected = true;
     history.replaceState({}, '', '/');
   }
-  if (params.get('ga4') === 'ok') {
+  if (params.get('ga4') === 'ok' && token) {
+    localStorage.setItem('ga4_token', token);
+    if (refresh) localStorage.setItem('ga4_refresh', refresh);
     state.ga4Connected = true;
     history.replaceState({}, '', '/');
   }
 
-  // Check stored tokens
   if (localStorage.getItem('gsc_token')) state.gscConnected = true;
   if (localStorage.getItem('ga4_token')) state.ga4Connected = true;
 
